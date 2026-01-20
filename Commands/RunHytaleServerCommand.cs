@@ -40,9 +40,14 @@ internal sealed class RunHytaleServerCommand : VelvetCommand
 
         var process = new Process();
         process.StartInfo.FileName = "java";
-        process.StartInfo.Arguments = $"-cp \"{serverJar}\" com.hypixel.hytale.Main --allow-op --disable-sentry --assets=\"{assetsZip}\" --mods=\"{pluginPath}\"";
+        var args = $"-cp \"{serverJar}\" com.hypixel.hytale.Main --allow-op --disable-sentry --assets=\"{assetsZip}\"";
+        if (!string.IsNullOrWhiteSpace(pluginPath))
+        {
+            args += $" --mods=\"{pluginPath}\"";
+        }
+        process.StartInfo.Arguments = args;
         process.StartInfo.WorkingDirectory = workingDir;
-        process.StartInfo.UseShellExecute = false;
+        process.StartInfo.UseShellExecute = true;
         process.StartInfo.RedirectStandardOutput = false;
         process.StartInfo.RedirectStandardError = false;
         process.StartInfo.CreateNoWindow = false;
@@ -52,9 +57,6 @@ internal sealed class RunHytaleServerCommand : VelvetCommand
             if (process.Start())
             {
                 AnsiConsole.MarkupLine("[green]Hytale server started successfully![/]");
-                // We don't wait for exit here because we want the CLI to remain interactive if needed,
-                // or we could block if that's the desired behavior.
-                // In VelvetCLI, commands seem to run and finish.
             }
             else
             {
