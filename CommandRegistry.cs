@@ -1,4 +1,3 @@
-using GreetingApp.Commands;
 using VelvetCLI.Commands;
 
 namespace VelvetCLI;

@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using Spectre.Console;
 using VelvetCLI.Commands;
 
