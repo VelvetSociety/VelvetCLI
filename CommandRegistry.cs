@@ -20,6 +20,7 @@ internal sealed class CommandRegistry
             //new ListFilesCommand(executor),
             new InitialiseWorkspaceCommand(),
             new RunHytaleServerCommand(),
+            new AuthenticateHytaleCommand(),
             //new ShowDateTimeCommand(executor),
             //new SystemInfoCommand(executor),
             new ExitCommand()
