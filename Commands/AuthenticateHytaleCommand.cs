@@ -12,8 +12,6 @@ internal sealed class AuthenticateHytaleCommand : VelvetCommand
 
     protected override void ExecuteCore()
     {
-        AnsiConsole.MarkupLine("[bold blue]Starting Hytale Server for Authentication...[/]");
-
         string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
         string hytaleHome = Path.Combine(appData, "Hytale");
         string patchline = "release"; // Default to release as per gradle.properties
@@ -36,62 +34,62 @@ internal sealed class AuthenticateHytaleCommand : VelvetCommand
             Directory.CreateDirectory(workingDir);
         }
 
-        var process = new Process();
-        process.StartInfo.FileName = "java";
-        
-        // Include the auth commands here
-        var args = $"-cp \"{serverJar}\" com.hypixel.hytale.Main --allow-op --disable-sentry --assets=\"{assetsZip}\" --boot-command \"auth login device,auth persistence Encrypted\"";
-        
-        if (!string.IsNullOrWhiteSpace(pluginPath))
-        {
-            args += $" --mods=\"{pluginPath}\"";
-        }
-        process.StartInfo.Arguments = args;
-        process.StartInfo.WorkingDirectory = workingDir;
-        
-        // Redirect output to capture the auth code
-        process.StartInfo.UseShellExecute = false;
-        process.StartInfo.RedirectStandardOutput = true;
-        process.StartInfo.RedirectStandardError = true;
-        process.StartInfo.RedirectStandardInput = true; // Enable input redirection
+        AnsiConsole.Status()
+            .Spinner(Spinner.Known.Dots)
+            .Start("[bold blue]Preparing Hytale Server...[/]", ctx =>
+            {
+                var process = new Process();
+                process.StartInfo.FileName = "java";
 
-        process.OutputDataReceived += (sender, e) =>
-        {
-            if (e.Data != null)
-            {
-                Console.WriteLine(e.Data);
-                CheckForAuthOutput(e.Data, process);
-            }
-        };
-        process.ErrorDataReceived += (sender, e) =>
-        {
-            if (e.Data != null)
-            {
-                Console.WriteLine(e.Data);
-            }
-        };
+                // Include the auth commands here
+                var args = $"-cp \"{serverJar}\" com.hypixel.hytale.Main --allow-op --disable-sentry --assets=\"{assetsZip}\" --boot-command \"auth login device,auth persistence Encrypted\"";
 
-        try
-        {
-            if (process.Start())
-            {
-                process.BeginOutputReadLine();
-                process.BeginErrorReadLine();
-                AnsiConsole.MarkupLine("[green]Hytale server started for auth...[/]");
-                process.WaitForExit();
-            }
-            else
-            {
-                AnsiConsole.MarkupLine("[red]Failed to start Hytale server process.[/]");
-            }
-        }
-        catch (Exception ex)
-        {
-            AnsiConsole.MarkupLine($"[red]Error starting server:[/] {ex.Message}");
-        }
+                if (!string.IsNullOrWhiteSpace(pluginPath))
+                {
+                    args += $" --mods=\"{pluginPath}\"";
+                }
+                process.StartInfo.Arguments = args;
+                process.StartInfo.WorkingDirectory = workingDir;
+
+                // Redirect output to capture the auth code
+                process.StartInfo.UseShellExecute = false;
+                process.StartInfo.RedirectStandardOutput = true;
+                process.StartInfo.RedirectStandardError = true;
+                process.StartInfo.RedirectStandardInput = true;
+
+                process.OutputDataReceived += (sender, e) =>
+                {
+                    if (e.Data != null)
+                    {
+                        CheckForAuthOutput(e.Data, process, ctx);
+                    }
+                };
+
+                ctx.Status("[bold blue]Starting Hytale Server for Authentication...[/]");
+
+                try
+                {
+                    if (process.Start())
+                    {
+                        process.BeginOutputReadLine();
+                        process.BeginErrorReadLine();
+
+                        ctx.Status("[yellow]Waiting for authentication code from server...[/]");
+                        process.WaitForExit();
+                    }
+                    else
+                    {
+                        AnsiConsole.MarkupLine("[red]Failed to start Hytale server process.[/]");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    AnsiConsole.MarkupLine($"[red]Error starting server:[/] {ex.Message}");
+                }
+            });
     }
 
-    private void CheckForAuthOutput(string line, Process process)
+    private void CheckForAuthOutput(string line, Process process, StatusContext ctx)
     {
         // Check for Auth Code
         var match = System.Text.RegularExpressions.Regex.Match(line, @"Enter code:\s*([A-Za-z0-9]+)");
@@ -99,9 +97,10 @@ internal sealed class AuthenticateHytaleCommand : VelvetCommand
         {
             var code = match.Groups[1].Value;
             var url = $"https://oauth.accounts.hytale.com/oauth2/device/verify?user_code={code}";
-            
-            AnsiConsole.MarkupLine($"[bold yellow]Detected Auth Code:[/] {code}");
-            AnsiConsole.MarkupLine($"[dim]Opening browser to:[/] {url}");
+
+            AnsiConsole.MarkupLine($"[bold green] Detected Auth Code:[/] [bold yellow]{code}[/]");
+
+            ctx.Status($"[bold blue]Waiting for browser verification...[/] (Code: [yellow]{code}[/])");
 
             try
             {
@@ -114,20 +113,21 @@ internal sealed class AuthenticateHytaleCommand : VelvetCommand
             catch (Exception ex)
             {
                 AnsiConsole.MarkupLine($"[red]Failed to open browser:[/] {ex.Message}");
+                AnsiConsole.MarkupLine($"[dim]Please open manually:[/] {url}");
             }
         }
 
         // Check for Auth Success
         if (line.Contains("Authentication successful! Use '/auth status' to view details."))
         {
-            AnsiConsole.MarkupLine("[bold green]Authentication successful![/] Sending stop signal to save config...");
-            try 
+            ctx.Status("[bold green]Authentication successful![/] Saving configuration...");
+            try
             {
                 process.StandardInput.WriteLine("stop");
             }
             catch (Exception ex)
             {
-                 AnsiConsole.MarkupLine($"[red]Failed to send stop command:[/] {ex.Message}");
+                AnsiConsole.MarkupLine($"[red]Failed to send stop command:[/] {ex.Message}");
             }
         }
     }
