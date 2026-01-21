@@ -102,6 +102,8 @@ internal sealed class AuthenticateHytaleCommand : VelvetCommand
 
             ctx.Status($"[bold blue]Waiting for browser verification...[/] (Code: [yellow]{code}[/])");
 
+            AnsiConsole.MarkupLine("[bold blue]Opening browser...[/]");
+
             try
             {
                 Process.Start(new ProcessStartInfo
@@ -110,17 +112,18 @@ internal sealed class AuthenticateHytaleCommand : VelvetCommand
                     UseShellExecute = true
                 });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                AnsiConsole.MarkupLine($"[red]Failed to open browser:[/] {ex.Message}");
-                AnsiConsole.MarkupLine($"[dim]Please open manually:[/] {url}");
+                AnsiConsole.MarkupLine("[red]Failed to open browser automatically. Please open the link manually:[/]");
+                AnsiConsole.MarkupLine($"[underline blue]{url}[/]");
+                Console.WriteLine(); // Add a newline for clarity
             }
         }
 
         // Check for Auth Success
         if (line.Contains("Authentication successful! Use '/auth status' to view details."))
         {
-            ctx.Status("[bold green]Authentication successful![/] Saving configuration...");
+            AnsiConsole.MarkupLine("[bold green]Authentication successful![/] Saving configuration...");
             try
             {
                 process.StandardInput.WriteLine("stop");
