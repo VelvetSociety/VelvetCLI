@@ -8,7 +8,7 @@ internal abstract class VelvetCommand
     public virtual string Description => Name;
     public virtual bool ShouldExitAfterRun => false;
 
-    public virtual void Execute() => ExecuteCore();
+    public virtual void Execute(string[] args) => ExecuteCore(args);
 
-    protected abstract void ExecuteCore();
+    protected abstract void ExecuteCore(string[] args);
 }

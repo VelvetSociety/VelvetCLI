@@ -6,7 +6,7 @@ internal sealed class ExitCommand : VelvetCommand
     public override string Description => "Exit the application";
     public override bool ShouldExitAfterRun => true;
 
-    protected override void ExecuteCore()
+    protected override void ExecuteCore(string[] args)
     {
         Console.WriteLine("\nExiting...");
     }

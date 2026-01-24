@@ -10,7 +10,7 @@ internal sealed class AuthenticateHytaleCommand : VelvetCommand
     public override string Name => "hytale-auth";
     public override string Description => "Authenticates the Hytale server and saves credentials";
 
-    protected override void ExecuteCore()
+    protected override void ExecuteCore(string[] args)
     {
         string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
         string hytaleHome = Path.Combine(appData, "Hytale");
@@ -42,13 +42,13 @@ internal sealed class AuthenticateHytaleCommand : VelvetCommand
                 process.StartInfo.FileName = "java";
 
                 // Include the auth commands here
-                var args = $"-cp \"{serverJar}\" com.hypixel.hytale.Main --allow-op --disable-sentry --assets=\"{assetsZip}\" --boot-command \"auth login device,auth persistence Encrypted\"";
+                var launchArgs = $"-cp \"{serverJar}\" com.hypixel.hytale.Main --allow-op --disable-sentry --assets=\"{assetsZip}\" --boot-command \"auth login device,auth persistence Encrypted\"";
 
                 if (!string.IsNullOrWhiteSpace(pluginPath))
                 {
-                    args += $" --mods=\"{pluginPath}\"";
+                    launchArgs += $" --mods=\"{pluginPath}\"";
                 }
-                process.StartInfo.Arguments = args;
+                process.StartInfo.Arguments = launchArgs;
                 process.StartInfo.WorkingDirectory = workingDir;
 
                 // Redirect output to capture the auth code

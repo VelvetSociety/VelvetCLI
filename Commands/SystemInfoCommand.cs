@@ -16,5 +16,5 @@ internal sealed class SystemInfoCommand : LongRunningCommand
 
     protected override string StatusDescription => "Gathering system information...";
 
-    protected override void ExecuteCore() => _executor.RunCommand("systeminfo");
+    protected override void ExecuteCore(string[] args) => _executor.RunCommand("systeminfo");
 }

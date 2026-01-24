@@ -10,7 +10,7 @@ internal sealed class RunHytaleServerCommand : VelvetCommand
     public override string Name => "hytale-server";
     public override string Description => "Runs the Hytale server with the example plugin";
 
-    protected override void ExecuteCore()
+    protected override void ExecuteCore(string[] args)
     {
         AnsiConsole.MarkupLine("[bold blue]Starting Hytale Server...[/]");
 
@@ -40,12 +40,12 @@ internal sealed class RunHytaleServerCommand : VelvetCommand
 
         var process = new Process();
         process.StartInfo.FileName = "java";
-        var args = $"-cp \"{serverJar}\" com.hypixel.hytale.Main --allow-op --disable-sentry --assets=\"{assetsZip}\"";
+        var launchArgs = $"-cp \"{serverJar}\" com.hypixel.hytale.Main --allow-op --disable-sentry --assets=\"{assetsZip}\"";
         if (!string.IsNullOrWhiteSpace(pluginPath))
         {
-            args += $" --mods=\"{pluginPath}\"";
+            launchArgs += $" --mods=\"{pluginPath}\"";
         }
-        process.StartInfo.Arguments = args;
+        process.StartInfo.Arguments = launchArgs;
         process.StartInfo.WorkingDirectory = workingDir;
         process.StartInfo.UseShellExecute = true;
         process.StartInfo.RedirectStandardOutput = false;

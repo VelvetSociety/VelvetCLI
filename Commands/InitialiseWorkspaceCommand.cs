@@ -8,7 +8,7 @@ namespace VelvetCLI.Commands
         public override string Name => "init";
         public override string Description => "Initialise MODS workspace";
 
-        protected override void ExecuteCore()
+        protected override void ExecuteCore(string[] args)
         {
             const string modsFolder = "mods";
 

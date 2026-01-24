@@ -12,5 +12,5 @@ internal sealed class ListFilesCommand : VelvetCommand
     public override string Name => "list";
     public override string Description => "List files in current directory";
 
-    protected override void ExecuteCore() => _executor.RunCommand("dir");
+    protected override void ExecuteCore(string[] args) => _executor.RunCommand("dir");
 }

@@ -33,7 +33,7 @@ internal sealed class VelvetCliApp
             if (string.IsNullOrWhiteSpace(input))
             {
                 VelvetCommand chosen = MenuView.Show(_commandRegistry.Commands);
-                if (ExecuteCommand(chosen))
+                if (ExecuteCommand(chosen, Array.Empty<string>()))
                 {
                     return;
                 }
@@ -41,9 +41,11 @@ internal sealed class VelvetCliApp
                 continue;
             }
 
-            if (TryMatchCommand(input, out VelvetCommand? matched))
+            string[] parts = input.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length > 0 && TryMatchCommand(parts[0], out VelvetCommand? matched))
             {
-                if (ExecuteCommand(matched))
+                string[] args = parts.Skip(1).ToArray();
+                if (ExecuteCommand(matched, args))
                 {
                     return;
                 }
@@ -55,16 +57,16 @@ internal sealed class VelvetCliApp
         }
     }
 
-    private bool TryMatchCommand(string input, out VelvetCommand? command)
+    private bool TryMatchCommand(string commandName, out VelvetCommand? command)
     {
         command = _commandRegistry.Commands
-            .FirstOrDefault(cmd => string.Equals(cmd.Name, input, StringComparison.OrdinalIgnoreCase));
+            .FirstOrDefault(cmd => string.Equals(cmd.Name, commandName, StringComparison.OrdinalIgnoreCase));
         return command is not null;
     }
 
-    private static bool ExecuteCommand(VelvetCommand command)
+    private static bool ExecuteCommand(VelvetCommand command, string[] args)
     {
-        command.Execute();
+        command.Execute(args);
 
         if (command.ShouldExitAfterRun)
         {
