@@ -377,4 +377,52 @@ internal sealed class ModCommand : VelvetCommand
             AnsiConsole.MarkupLine($"[red]Error saving selection:[/] {ex.Message}");
         }
     }
+
+    public override IEnumerable<string> GetCompletions(string[] args)
+    {
+        if (args.Length == 0)
+        {
+            return new[] { "clone", "open", "select", "ide" };
+        }
+
+        if (args.Length == 1)
+        {
+            string sub = args[0].ToLowerInvariant();
+            var subs = new[] { "clone", "open", "select", "ide" };
+            
+            if (subs.Contains(sub))
+            {
+                if (sub == "open")
+                {
+                    const string modsFolder = "mods";
+                    if (Directory.Exists(modsFolder))
+                    {
+                        return Directory.GetDirectories(modsFolder)
+                            .Select(Path.GetFileName)
+                            .Where(n => n != null)
+                            .Cast<string>();
+                    }
+                }
+                return Enumerable.Empty<string>();
+            }
+
+            return subs.Where(s => s.StartsWith(sub, StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (args.Length == 2 && args[0].Equals("open", StringComparison.OrdinalIgnoreCase))
+        {
+            const string modsFolder = "mods";
+            if (Directory.Exists(modsFolder))
+            {
+                string query = args[1].ToLowerInvariant();
+                return Directory.GetDirectories(modsFolder)
+                    .Select(Path.GetFileName)
+                    .Where(n => n != null)
+                    .Cast<string>()
+                    .Where(n => n.StartsWith(query, StringComparison.OrdinalIgnoreCase));
+            }
+        }
+
+        return Enumerable.Empty<string>();
+    }
 }

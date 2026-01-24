@@ -21,6 +21,11 @@ internal abstract class VelvetCommand
 
     protected abstract void ExecuteCore(string[] args);
 
+    public virtual IEnumerable<string> GetCompletions(string[] args)
+    {
+        return Enumerable.Empty<string>();
+    }
+
     public virtual void ShowHelp()
     {
         AnsiConsole.MarkupLine($"[bold blue]Command:[/] {Name}");
