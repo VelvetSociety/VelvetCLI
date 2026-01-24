@@ -42,7 +42,7 @@ internal sealed class AuthenticateHytaleCommand : VelvetCommand
                 process.StartInfo.FileName = "java";
 
                 // Include the auth commands here
-                var launchArgs = $"-cp \"{serverJar}\" com.hypixel.hytale.Main --allow-op --disable-sentry --assets=\"{assetsZip}\" --boot-command \"auth login device,auth persistence Encrypted\"";
+                var launchArgs = $"-jar \"{serverJar}\" --allow-op --disable-sentry --assets=\"{assetsZip}\" --boot-command \"auth login device,auth persistence Encrypted\"";
 
                 if (!string.IsNullOrWhiteSpace(pluginPath))
                 {
@@ -133,5 +133,13 @@ internal sealed class AuthenticateHytaleCommand : VelvetCommand
                 AnsiConsole.MarkupLine($"[red]Failed to send stop command:[/] {ex.Message}");
             }
         }
+    }
+    public override void ShowHelp()
+    {
+        base.ShowHelp();
+        AnsiConsole.WriteLine();
+        AnsiConsole.MarkupLine("[bold yellow]Usage:[/] hytale-auth");
+        AnsiConsole.WriteLine();
+        AnsiConsole.MarkupLine("[grey]Note: This command will start the Hytale server to obtain an authentication code and open the verification URL in your browser.[/]");
     }
 }

@@ -1,3 +1,5 @@
+using Spectre.Console;
+
 namespace VelvetCLI.Commands;
 
 internal sealed class ExitCommand : VelvetCommand
@@ -9,5 +11,11 @@ internal sealed class ExitCommand : VelvetCommand
     protected override void ExecuteCore(string[] args)
     {
         Console.WriteLine("\nExiting...");
+    }
+    public override void ShowHelp()
+    {
+        base.ShowHelp();
+        AnsiConsole.WriteLine();
+        AnsiConsole.MarkupLine("[bold yellow]Usage:[/] exit");
     }
 }

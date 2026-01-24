@@ -1,3 +1,4 @@
+using Spectre.Console;
 using VelvetCLI;
 
 namespace VelvetCLI.Commands;
@@ -15,4 +16,11 @@ internal sealed class ShowDateTimeCommand : VelvetCommand
     public override string Description => "Show current date and time";
 
     protected override void ExecuteCore(string[] args) => _executor.RunCommand("date /T && time /T");
+
+    public override void ShowHelp()
+    {
+        base.ShowHelp();
+        AnsiConsole.WriteLine();
+        AnsiConsole.MarkupLine("[bold yellow]Usage:[/] time");
+    }
 }

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using Spectre.Console;
 
 namespace VelvetCLI.Commands
 {
@@ -28,6 +29,14 @@ namespace VelvetCLI.Commands
             {
                 Console.WriteLine("Error during initialisation: " + ex.Message);
             }
+        }
+        public override void ShowHelp()
+        {
+            base.ShowHelp();
+            AnsiConsole.WriteLine();
+            AnsiConsole.MarkupLine("[bold yellow]Usage:[/] init");
+            AnsiConsole.WriteLine();
+            AnsiConsole.MarkupLine("[grey]Note: This command creates the 'mods' folder if it doesn't already exist, initializing the current directory as a Velvet workspace.[/]");
         }
     }
 }
