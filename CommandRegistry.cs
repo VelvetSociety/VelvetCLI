@@ -21,6 +21,7 @@ internal sealed class CommandRegistry
             new InitialiseWorkspaceCommand(),
             new RunHytaleServerCommand(),
             new AuthenticateHytaleCommand(),
+            new ModCommand(),
             //new ShowDateTimeCommand(executor),
             //new SystemInfoCommand(executor),
             new ExitCommand()

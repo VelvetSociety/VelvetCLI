@@ -10,9 +10,10 @@ internal static class InputPalette
     public static string ReadLineWithPalette(IReadOnlyList<VelvetCommand> commands)
     {
         var buffer = new StringBuilder();
+        string ghostText = "";
 
         // Show initial prompt (hint when buffer is empty)
-        RepaintPrompt(buffer.ToString());
+        RepaintPrompt(buffer.ToString(), ghostText, commands);
 
         while (true)
         {
@@ -31,12 +32,31 @@ internal static class InputPalette
                 return buffer.ToString();
             }
 
+            if (key.Key == ConsoleKey.Tab)
+            {
+                if (!string.IsNullOrEmpty(ghostText))
+                {
+                    buffer.Append(ghostText);
+                    // Add a space if it's a command name and doesn't have one yet
+                    string current = buffer.ToString();
+                    if (!current.Contains(" ") && commands.Any(c => c.Name.Equals(current, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        buffer.Append(" ");
+                    }
+                    
+                    ghostText = GetGhostText(buffer.ToString(), commands);
+                    RepaintPrompt(buffer.ToString(), ghostText, commands);
+                }
+                continue;
+            }
+
             if (key.Key == ConsoleKey.Backspace)
             {
                 if (buffer.Length > 0)
                 {
                     buffer.Length--;
-                    RepaintPrompt(buffer.ToString());
+                    ghostText = GetGhostText(buffer.ToString(), commands);
+                    RepaintPrompt(buffer.ToString(), ghostText, commands);
                 }
                 continue;
             }
@@ -47,29 +67,67 @@ internal static class InputPalette
 
                 if (selected == "__BACKSPACE_CANCELLED__")
                 {
-                    RepaintPrompt(buffer.ToString());
+                    ghostText = GetGhostText(buffer.ToString(), commands);
+                    RepaintPrompt(buffer.ToString(), ghostText, commands);
                     continue;
                 }
 
                 if (selected != null)
                 {
-                    // Show a gray background line indicating the command the user ran,
-                    // then return the selected command so the caller can execute it.
                     ShowExecutedCommand(selected);
                     return selected;
                 }
 
-                RepaintPrompt(buffer.ToString());
+                ghostText = GetGhostText(buffer.ToString(), commands);
+                RepaintPrompt(buffer.ToString(), ghostText, commands);
                 continue;
             }
 
             if (!char.IsControl(key.KeyChar))
             {
                 buffer.Append(key.KeyChar);
-                // Repaint the whole prompt so the hint disappears as soon as the user types.
-                RepaintPrompt(buffer.ToString());
+                ghostText = GetGhostText(buffer.ToString(), commands);
+                RepaintPrompt(buffer.ToString(), ghostText, commands);
             }
         }
+    }
+
+    private static string GetGhostText(string input, IReadOnlyList<VelvetCommand> commands)
+    {
+        if (string.IsNullOrEmpty(input)) return "";
+
+        string[] parts = input.Split(' ');
+        if (parts.Length == 1)
+        {
+            // Command name completion
+            var matched = commands.FirstOrDefault(c => c.Name.StartsWith(parts[0], StringComparison.OrdinalIgnoreCase));
+            if (matched != null && !matched.Name.Equals(parts[0], StringComparison.OrdinalIgnoreCase))
+            {
+                return matched.Name.Substring(parts[0].Length);
+            }
+        }
+        else
+        {
+            // Subcommand / Argument completion
+            var cmdName = parts[0];
+            var command = commands.FirstOrDefault(c => c.Name.Equals(cmdName, StringComparison.OrdinalIgnoreCase));
+            if (command != null)
+            {
+                string lastPart = parts.Last();
+                string[] argsSoFar = parts.Skip(1).Take(parts.Length - (string.IsNullOrEmpty(lastPart) ? 1 : 2)).ToArray();
+                
+                // We want completions for the "lastPart"
+                var completions = command.GetCompletions(argsSoFar).ToList();
+                var bestMatch = completions.FirstOrDefault(s => s.StartsWith(lastPart, StringComparison.OrdinalIgnoreCase));
+                
+                if (bestMatch != null && !bestMatch.Equals(lastPart, StringComparison.OrdinalIgnoreCase))
+                {
+                    return bestMatch.Substring(lastPart.Length);
+                }
+            }
+        }
+
+        return "";
     }
 
     private static string? ShowCommandPalette(IReadOnlyList<VelvetCommand> commands)
@@ -91,6 +149,9 @@ internal static class InputPalette
 
         void Render()
         {
+            bool originalCursorVisible = Console.CursorVisible;
+            Console.CursorVisible = false;
+
             int maxDisplay = Math.Min(filtered.Count, paletteItemCount);
             int windowWidth = Math.Max(0, Console.WindowWidth);
 
@@ -134,10 +195,15 @@ internal static class InputPalette
             // Place caret after the query part (after ">/" which is 2 chars)
             int caretPosition = 2 + query.Length;
             Console.SetCursorPosition(caretPosition, renderTop);
+
+            Console.CursorVisible = originalCursorVisible;
         }
 
         void ClearPaletteRender()
         {
+            bool originalCursorVisible = Console.CursorVisible;
+            Console.CursorVisible = false;
+
             int windowWidth = Math.Max(0, Console.WindowWidth);
             // Clear the prompt line + paletteItemCount palette lines
             for (int i = 0; i < paletteHeight; i++)
@@ -148,6 +214,8 @@ internal static class InputPalette
 
             // Restore cursor to the prompt row (collapse the gap if we rendered above the original)
             Console.SetCursorPosition(baseLeft, renderTop);
+
+            Console.CursorVisible = originalCursorVisible;
         }
 
         filtered = commands.ToList();
@@ -254,13 +322,15 @@ internal static class InputPalette
         }
     }
 
-    private static void RepaintPrompt(string current)
+    private static void RepaintPrompt(string current, string ghostText, IReadOnlyList<VelvetCommand> commands)
     {
-        int promptColumn = 2;
-        int left = promptColumn;
+        bool originalCursorVisible = Console.CursorVisible;
+        Console.CursorVisible = false;
+
+        int cursorColumn = 2;
         int top = Console.CursorTop;
         int windowWidth = Math.Max(0, Console.WindowWidth);
-        int contentWidth = Math.Max(0, windowWidth - promptColumn);
+        int contentWidth = Math.Max(0, windowWidth - cursorColumn);
 
         Console.SetCursorPosition(0, top);
         Console.Write("> ");
@@ -273,7 +343,6 @@ internal static class InputPalette
             if (hintToShow.Length > contentWidth)
             {
                 Console.Write(hintToShow.Substring(0, contentWidth));
-                Console.Write(new string(' ', Math.Max(0, contentWidth - Math.Min(contentWidth, hintToShow.Length))));
             }
             else
             {
@@ -283,26 +352,53 @@ internal static class InputPalette
             Console.ResetColor();
 
             // Place caret right after the prompt (ready for input)
-            int caretCol = Math.Min(left, Math.Max(0, windowWidth - 1));
-            Console.SetCursorPosition(caretCol, top);
+            Console.SetCursorPosition(cursorColumn, top);
         }
         else
         {
-            // Render user input and pad the remainder of the line to clear previous content.
-            if (current.Length > contentWidth)
+            // Render user input
+            // Basic syntax highlighting: if first part is a valid command, color it green
+            string[] parts = current.Split(' ');
+            if (parts.Length > 0)
             {
-                Console.Write(current.Substring(0, contentWidth));
-            }
-            else
-            {
-                Console.Write(current);
-                Console.Write(new string(' ', contentWidth - current.Length));
+                bool isValidCmd = commands.Any(c => c.Name.Equals(parts[0], StringComparison.OrdinalIgnoreCase));
+                if (isValidCmd)
+                {
+                    Console.ForegroundColor = ConsoleColor.Green;
+                    Console.Write(parts[0]);
+                    Console.ResetColor();
+                    if (current.Length > parts[0].Length)
+                    {
+                        Console.Write(current.Substring(parts[0].Length));
+                    }
+                }
+                else
+                {
+                    Console.Write(current);
+                }
             }
 
-            // Place caret after user's text
-            int caretCol = Math.Min(left + current.Length, Math.Max(0, windowWidth - 1));
+            // Render ghost text
+            if (!string.IsNullOrEmpty(ghostText))
+            {
+                Console.ForegroundColor = ConsoleColor.DarkGray;
+                Console.Write(ghostText);
+                Console.ResetColor();
+            }
+
+            // Pad the remainder of the line
+            int writtenLength = current.Length + (ghostText?.Length ?? 0);
+            if (contentWidth > writtenLength)
+            {
+                Console.Write(new string(' ', contentWidth - writtenLength));
+            }
+
+            // Place caret after user's text (NOT after ghost text)
+            int caretCol = Math.Min(cursorColumn + current.Length, Math.Max(0, windowWidth - 1));
             Console.SetCursorPosition(caretCol, top);
         }
+
+        Console.CursorVisible = originalCursorVisible;
     }
 
     private static List<VelvetCommand> Filter(IReadOnlyList<VelvetCommand> all, string q)

@@ -7,11 +7,12 @@ namespace VelvetCLI.Commands;
 
 internal sealed class RunHytaleServerCommand : VelvetCommand
 {
-    public override string Name => "hytale-server";
+    public override string Name => "server";
     public override string Description => "Runs the Hytale server with the example plugin";
 
-    protected override void ExecuteCore()
+    protected override void ExecuteCore(string[] args)
     {
+        bool forceRebuild = args.Length > 0 && string.Equals(args[0], "rebuild", StringComparison.OrdinalIgnoreCase);
         AnsiConsole.MarkupLine("[bold blue]Starting Hytale Server...[/]");
 
         string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
@@ -21,11 +22,39 @@ internal sealed class RunHytaleServerCommand : VelvetCommand
         string serverJar = Path.Combine(hytaleHome, "install", patchline, "package", "game", "latest", "Server", "HytaleServer.jar");
         string assetsZip = Path.Combine(hytaleHome, "install", patchline, "package", "game", "latest", "Assets.zip");
 
-        // This command assumes it's being run from the context of the Hytale-Example-Project-plugin
-        // For a generic implementation, we might want to ask for the plugin path or detect it.
-        // Assuming the plugin path is the one from the research.
-        string pluginPath = @"";
-        string workingDir = Path.Combine(pluginPath, "run");
+        const string selectionFile = "mods/selected_mods.json";
+        var selectedMods = new List<string>();
+
+        if (File.Exists(selectionFile))
+        {
+            try
+            {
+                string json = File.ReadAllText(selectionFile);
+                selectedMods = System.Text.Json.JsonSerializer.Deserialize<List<string>>(json) ?? new();
+            }
+            catch { /* Ignore corrupt file */ }
+        }
+
+        var modDirs = new List<string>();
+        foreach (var modName in selectedMods)
+        {
+            string? jarPath = EnsureModBuilt(modName, forceRebuild);
+            if (jarPath != null)
+            {
+                string? dirPath = Path.GetDirectoryName(Path.GetFullPath(jarPath));
+                if (dirPath != null)
+                {
+                    modDirs.Add(dirPath);
+                }
+            }
+            else
+            {
+                AnsiConsole.MarkupLine($"[red]Warning:[/] Skipping mod '[yellow]{modName}[/]' because it could not be built.");
+            }
+        }
+
+        string hytaleModsArg = string.Join(",", modDirs.Distinct());
+        string workingDir = "server";
 
         if (!File.Exists(serverJar))
         {
@@ -38,14 +67,16 @@ internal sealed class RunHytaleServerCommand : VelvetCommand
             Directory.CreateDirectory(workingDir);
         }
 
-        var process = new Process();
-        process.StartInfo.FileName = "java";
-        var args = $"-cp \"{serverJar}\" com.hypixel.hytale.Main --allow-op --disable-sentry --assets=\"{assetsZip}\"";
-        if (!string.IsNullOrWhiteSpace(pluginPath))
+        var launchArgs = $"-jar \"{serverJar}\" --allow-op --disable-sentry --assets=\"{assetsZip}\"";
+        if (!string.IsNullOrWhiteSpace(hytaleModsArg))
         {
-            args += $" --mods=\"{pluginPath}\"";
+            launchArgs += $" --mods=\"{hytaleModsArg}\"";
         }
-        process.StartInfo.Arguments = args;
+
+        var process = new Process();
+        process.StartInfo.FileName = "cmd.exe";
+        // /K keeps the window open after the command finishes.
+        process.StartInfo.Arguments = $"/K \"java {launchArgs}\"";
         process.StartInfo.WorkingDirectory = workingDir;
         process.StartInfo.UseShellExecute = true;
         process.StartInfo.RedirectStandardOutput = false;
@@ -67,5 +98,89 @@ internal sealed class RunHytaleServerCommand : VelvetCommand
         {
             AnsiConsole.MarkupLine($"[red]Error starting server:[/] {ex.Message}");
         }
+    }
+
+    private string? EnsureModBuilt(string modName, bool forceRebuild)
+    {
+        string modPath = Path.Combine("mods", modName);
+        string libsDir = Path.Combine(modPath, "build", "libs");
+
+        string? FindMainJar()
+        {
+            if (!Directory.Exists(libsDir)) return null;
+            return Directory.GetFiles(libsDir, "*.jar")
+                .FirstOrDefault(f => !f.EndsWith("-sources.jar") && !f.EndsWith("-javadoc.jar"));
+        }
+
+        string? IsolateJar(string jarPath)
+        {
+            // Isolate the JAR into a 'dist' folder to avoid Hytale loading -sources and -javadoc
+            string distDir = Path.Combine(modPath, "build", "dist");
+            if (!Directory.Exists(distDir)) Directory.CreateDirectory(distDir);
+
+            // Clean dist dir
+            foreach (var file in Directory.GetFiles(distDir, "*.jar")) File.Delete(file);
+
+            string destPath = Path.Combine(distDir, Path.GetFileName(jarPath));
+            File.Copy(jarPath, destPath, true);
+            return destPath;
+        }
+
+        var existingJar = FindMainJar();
+        if (existingJar != null && !forceRebuild) return IsolateJar(existingJar);
+
+        // Build
+        AnsiConsole.MarkupLine($"[yellow]Building mod:[/] {modName}...");
+        try
+        {
+            var process = new Process();
+            process.StartInfo.FileName = "cmd.exe";
+            process.StartInfo.Arguments = "/C gradlew.bat build";
+            process.StartInfo.WorkingDirectory = modPath;
+            process.StartInfo.UseShellExecute = false;
+            process.StartInfo.CreateNoWindow = true;
+            process.StartInfo.RedirectStandardOutput = true;
+            process.StartInfo.RedirectStandardError = true;
+
+            process.Start();
+            process.WaitForExit();
+
+            if (process.ExitCode != 0)
+            {
+                string error = process.StandardError.ReadToEnd();
+                AnsiConsole.MarkupLine($"[red]Failed to build mod:[/] {modName}");
+                if (!string.IsNullOrWhiteSpace(error))
+                {
+                    AnsiConsole.MarkupLine($"[grey]{error}[/]");
+                }
+                return null;
+            }
+        }
+        catch (Exception ex)
+        {
+            AnsiConsole.MarkupLine($"[red]Error executing build for {modName}:[/] {ex.Message}");
+            return null;
+        }
+
+        var builtJar = FindMainJar();
+        return builtJar != null ? IsolateJar(builtJar) : null;
+    }
+    
+    public override IEnumerable<string> GetCompletions(string[] args)
+    {
+        if (args.Length == 0)
+        {
+            return new[] { "rebuild" };
+        }
+        return Enumerable.Empty<string>();
+    }
+
+    public override void ShowHelp()
+    {
+        base.ShowHelp();
+        AnsiConsole.WriteLine();
+        AnsiConsole.MarkupLine("[bold yellow]Usage:[/] server [[rebuild]]");
+        AnsiConsole.WriteLine();
+        AnsiConsole.MarkupLine("[grey]Note: This command will automatically build any selected mods that are missing compiled JARs before starting the server. Use 'rebuild' to force a rebuild of all selected mods.[/]");
     }
 }
