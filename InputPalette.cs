@@ -149,6 +149,9 @@ internal static class InputPalette
 
         void Render()
         {
+            bool originalCursorVisible = Console.CursorVisible;
+            Console.CursorVisible = false;
+
             int maxDisplay = Math.Min(filtered.Count, paletteItemCount);
             int windowWidth = Math.Max(0, Console.WindowWidth);
 
@@ -192,10 +195,15 @@ internal static class InputPalette
             // Place caret after the query part (after ">/" which is 2 chars)
             int caretPosition = 2 + query.Length;
             Console.SetCursorPosition(caretPosition, renderTop);
+
+            Console.CursorVisible = originalCursorVisible;
         }
 
         void ClearPaletteRender()
         {
+            bool originalCursorVisible = Console.CursorVisible;
+            Console.CursorVisible = false;
+
             int windowWidth = Math.Max(0, Console.WindowWidth);
             // Clear the prompt line + paletteItemCount palette lines
             for (int i = 0; i < paletteHeight; i++)
@@ -206,6 +214,8 @@ internal static class InputPalette
 
             // Restore cursor to the prompt row (collapse the gap if we rendered above the original)
             Console.SetCursorPosition(baseLeft, renderTop);
+
+            Console.CursorVisible = originalCursorVisible;
         }
 
         filtered = commands.ToList();
@@ -314,6 +324,9 @@ internal static class InputPalette
 
     private static void RepaintPrompt(string current, string ghostText, IReadOnlyList<VelvetCommand> commands)
     {
+        bool originalCursorVisible = Console.CursorVisible;
+        Console.CursorVisible = false;
+
         int cursorColumn = 2;
         int top = Console.CursorTop;
         int windowWidth = Math.Max(0, Console.WindowWidth);
@@ -384,6 +397,8 @@ internal static class InputPalette
             int caretCol = Math.Min(cursorColumn + current.Length, Math.Max(0, windowWidth - 1));
             Console.SetCursorPosition(caretCol, top);
         }
+
+        Console.CursorVisible = originalCursorVisible;
     }
 
     private static List<VelvetCommand> Filter(IReadOnlyList<VelvetCommand> all, string q)
