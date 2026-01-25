@@ -7,7 +7,7 @@ namespace VelvetCLI.Commands;
 
 internal sealed class AuthenticateHytaleCommand : VelvetCommand
 {
-    public override string Name => "hytale-auth";
+    public override string Name => "auth";
     public override string Description => "Authenticates the Hytale server and saves credentials";
 
     protected override void ExecuteCore(string[] args)
@@ -21,7 +21,7 @@ internal sealed class AuthenticateHytaleCommand : VelvetCommand
 
         // This command assumes it's being run from the context of the Hytale-Example-Project-plugin
         string pluginPath = @"";
-        string workingDir = Path.Combine(pluginPath, "run");
+        string workingDir = Path.Combine(pluginPath, "server");
 
         if (!File.Exists(serverJar))
         {
@@ -138,7 +138,7 @@ internal sealed class AuthenticateHytaleCommand : VelvetCommand
     {
         base.ShowHelp();
         AnsiConsole.WriteLine();
-        AnsiConsole.MarkupLine("[bold yellow]Usage:[/] hytale-auth");
+        AnsiConsole.MarkupLine("[bold yellow]Usage:[/] auth");
         AnsiConsole.WriteLine();
         AnsiConsole.MarkupLine("[grey]Note: This command will start the Hytale server to obtain an authentication code and open the verification URL in your browser.[/]");
     }

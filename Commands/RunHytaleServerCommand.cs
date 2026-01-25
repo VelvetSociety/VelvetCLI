@@ -7,11 +7,12 @@ namespace VelvetCLI.Commands;
 
 internal sealed class RunHytaleServerCommand : VelvetCommand
 {
-    public override string Name => "hytale-server";
+    public override string Name => "server";
     public override string Description => "Runs the Hytale server with the example plugin";
 
     protected override void ExecuteCore(string[] args)
     {
+        bool forceRebuild = args.Length > 0 && string.Equals(args[0], "rebuild", StringComparison.OrdinalIgnoreCase);
         AnsiConsole.MarkupLine("[bold blue]Starting Hytale Server...[/]");
 
         string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
@@ -37,7 +38,7 @@ internal sealed class RunHytaleServerCommand : VelvetCommand
         var modDirs = new List<string>();
         foreach (var modName in selectedMods)
         {
-            string? jarPath = EnsureModBuilt(modName);
+            string? jarPath = EnsureModBuilt(modName, forceRebuild);
             if (jarPath != null)
             {
                 string? dirPath = Path.GetDirectoryName(Path.GetFullPath(jarPath));
@@ -53,7 +54,7 @@ internal sealed class RunHytaleServerCommand : VelvetCommand
         }
 
         string hytaleModsArg = string.Join(",", modDirs.Distinct());
-        string workingDir = "run";
+        string workingDir = "server";
 
         if (!File.Exists(serverJar))
         {
@@ -99,7 +100,7 @@ internal sealed class RunHytaleServerCommand : VelvetCommand
         }
     }
 
-    private string? EnsureModBuilt(string modName)
+    private string? EnsureModBuilt(string modName, bool forceRebuild)
     {
         string modPath = Path.Combine("mods", modName);
         string libsDir = Path.Combine(modPath, "build", "libs");
@@ -126,7 +127,7 @@ internal sealed class RunHytaleServerCommand : VelvetCommand
         }
 
         var existingJar = FindMainJar();
-        if (existingJar != null) return IsolateJar(existingJar);
+        if (existingJar != null && !forceRebuild) return IsolateJar(existingJar);
 
         // Build
         AnsiConsole.MarkupLine($"[yellow]Building mod:[/] {modName}...");
@@ -164,13 +165,22 @@ internal sealed class RunHytaleServerCommand : VelvetCommand
         var builtJar = FindMainJar();
         return builtJar != null ? IsolateJar(builtJar) : null;
     }
+    
+    public override IEnumerable<string> GetCompletions(string[] args)
+    {
+        if (args.Length == 0)
+        {
+            return new[] { "rebuild" };
+        }
+        return Enumerable.Empty<string>();
+    }
 
     public override void ShowHelp()
     {
         base.ShowHelp();
         AnsiConsole.WriteLine();
-        AnsiConsole.MarkupLine("[bold yellow]Usage:[/] hytale-server");
+        AnsiConsole.MarkupLine("[bold yellow]Usage:[/] server [[rebuild]]");
         AnsiConsole.WriteLine();
-        AnsiConsole.MarkupLine("[grey]Note: This command will automatically build any selected mods that are missing compiled JARs before starting the server.[/]");
+        AnsiConsole.MarkupLine("[grey]Note: This command will automatically build any selected mods that are missing compiled JARs before starting the server. Use 'rebuild' to force a rebuild of all selected mods.[/]");
     }
 }
