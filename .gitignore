@@ -23,6 +23,7 @@ bld/
 [Oo]bj/
 [Ll]og/
 server/
+mods/
 
 # Visual Studio 2015 cache/options directory
 .vs/
