@@ -35,6 +35,9 @@ internal sealed class ModCommand : VelvetCommand
             case "ide":
                 ExecuteIde(args);
                 break;
+            case "rebuild":
+                ExecuteRebuild(args);
+                break;
             default:
                 AnsiConsole.MarkupLine($"[red]Unknown subcommand:[/] {subCommand}");
                 ShowUsage();
@@ -52,6 +55,7 @@ internal sealed class ModCommand : VelvetCommand
         AnsiConsole.MarkupLine("  [green]select[/]            Opens a menu to toggle which mods are active.");
         AnsiConsole.MarkupLine("  [green]ide [[command]][/]   Sets your preferred IDE command (e.g., 'code').");
         AnsiConsole.MarkupLine("  [green]ide clear[/]         Resets IDE preferences to defaults.");
+        AnsiConsole.MarkupLine("  [green]rebuild [[mod-name]][/] Rebuilds a specific mod or shows a selection menu.");
     }
 
     private void ShowUsage()
@@ -61,6 +65,7 @@ internal sealed class ModCommand : VelvetCommand
         AnsiConsole.MarkupLine("  mod open [[mod-name]]");
         AnsiConsole.MarkupLine("  mod select");
         AnsiConsole.MarkupLine("  mod ide [[command|clear]]");
+        AnsiConsole.MarkupLine("  mod rebuild [[mod-name]]");
     }
 
     private void ExecuteClone(string[] args)
@@ -378,21 +383,70 @@ internal sealed class ModCommand : VelvetCommand
         }
     }
 
+    private void ExecuteRebuild(string[] args)
+    {
+        const string modsFolder = "mods";
+
+        if (!Directory.Exists(modsFolder))
+        {
+            AnsiConsole.MarkupLine("[red]Error:[/] The 'mods' folder does not exist. Use 'init' to create it.");
+            return;
+        }
+
+        string? selectedMod = null;
+
+        if (args.Length >= 2)
+        {
+            selectedMod = args[1];
+            if (!Directory.Exists(Path.Combine(modsFolder, selectedMod)))
+            {
+                AnsiConsole.MarkupLine($"[red]Error:[/] Mod '[yellow]{selectedMod}[/]' not found in [blue]{modsFolder}[/].");
+                selectedMod = null;
+            }
+        }
+
+        if (selectedMod == null)
+        {
+            var mods = Directory.GetDirectories(modsFolder)
+                .Select(Path.GetFileName)
+                .ToList();
+
+            if (mods.Count == 0)
+            {
+                AnsiConsole.MarkupLine("[yellow]No mods found in the 'mods' folder.[/]");
+                return;
+            }
+
+            selectedMod = AnsiConsole.Prompt(
+                new SelectionPrompt<string>()
+                    .Title("Select a [green]mod[/] to rebuild:")
+                    .PageSize(10)
+                    .MoreChoicesText("[grey](Move up and down to reveal more mods)[/]")
+                    .AddChoices(mods));
+        }
+
+        if (!string.IsNullOrEmpty(selectedMod))
+        {
+            string modPath = Path.Combine(modsFolder, selectedMod);
+            BuildUtility.BuildMod(selectedMod, modPath);
+        }
+    }
+
     public override IEnumerable<string> GetCompletions(string[] args)
     {
         if (args.Length == 0)
         {
-            return new[] { "clone", "open", "select", "ide" };
+            return new[] { "clone", "open", "select", "ide", "rebuild" };
         }
 
         if (args.Length == 1)
         {
             string sub = args[0].ToLowerInvariant();
-            var subs = new[] { "clone", "open", "select", "ide" };
+            var subs = new[] { "clone", "open", "select", "ide", "rebuild" };
             
             if (subs.Contains(sub))
             {
-                if (sub == "open")
+                if (sub == "open" || sub == "rebuild")
                 {
                     const string modsFolder = "mods";
                     if (Directory.Exists(modsFolder))
@@ -409,7 +463,7 @@ internal sealed class ModCommand : VelvetCommand
             return subs.Where(s => s.StartsWith(sub, StringComparison.OrdinalIgnoreCase));
         }
 
-        if (args.Length == 2 && args[0].Equals("open", StringComparison.OrdinalIgnoreCase))
+        if (args.Length == 2 && (args[0].Equals("open", StringComparison.OrdinalIgnoreCase) || args[0].Equals("rebuild", StringComparison.OrdinalIgnoreCase)))
         {
             const string modsFolder = "mods";
             if (Directory.Exists(modsFolder))

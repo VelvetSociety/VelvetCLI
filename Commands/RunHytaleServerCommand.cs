@@ -130,40 +130,13 @@ internal sealed class RunHytaleServerCommand : VelvetCommand
         if (existingJar != null && !forceRebuild) return IsolateJar(existingJar);
 
         // Build
-        AnsiConsole.MarkupLine($"[yellow]Building mod:[/] {modName}...");
-        try
+        if (BuildUtility.BuildMod(modName, modPath))
         {
-            var process = new Process();
-            process.StartInfo.FileName = "cmd.exe";
-            process.StartInfo.Arguments = "/C gradlew.bat build";
-            process.StartInfo.WorkingDirectory = modPath;
-            process.StartInfo.UseShellExecute = false;
-            process.StartInfo.CreateNoWindow = true;
-            process.StartInfo.RedirectStandardOutput = true;
-            process.StartInfo.RedirectStandardError = true;
-
-            process.Start();
-            process.WaitForExit();
-
-            if (process.ExitCode != 0)
-            {
-                string error = process.StandardError.ReadToEnd();
-                AnsiConsole.MarkupLine($"[red]Failed to build mod:[/] {modName}");
-                if (!string.IsNullOrWhiteSpace(error))
-                {
-                    AnsiConsole.MarkupLine($"[grey]{error}[/]");
-                }
-                return null;
-            }
-        }
-        catch (Exception ex)
-        {
-            AnsiConsole.MarkupLine($"[red]Error executing build for {modName}:[/] {ex.Message}");
-            return null;
+            var builtJar = FindMainJar();
+            return builtJar != null ? IsolateJar(builtJar) : null;
         }
 
-        var builtJar = FindMainJar();
-        return builtJar != null ? IsolateJar(builtJar) : null;
+        return null;
     }
     
     public override IEnumerable<string> GetCompletions(string[] args)
