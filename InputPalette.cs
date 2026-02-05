@@ -39,7 +39,7 @@ internal static class InputPalette
                     buffer.Append(ghostText);
                     // Add a space if it's a command name and doesn't have one yet
                     string current = buffer.ToString();
-                    if (!current.Contains(" ") && commands.Any(c => c.Name.Equals(current, StringComparison.OrdinalIgnoreCase)))
+                    if (!current.Contains(" ") && CommandResolver.IsKnownTopLevelToken(commands, current))
                     {
                         buffer.Append(" ");
                     }
@@ -100,21 +100,23 @@ internal static class InputPalette
         if (parts.Length == 1)
         {
             // Command name completion
-            var matched = commands.FirstOrDefault(c => c.Name.StartsWith(parts[0], StringComparison.OrdinalIgnoreCase));
-            if (matched != null && !matched.Name.Equals(parts[0], StringComparison.OrdinalIgnoreCase))
+            string partial = parts[0];
+            var matched = CommandResolver.GetTopLevelTokens(commands)
+                .FirstOrDefault(t => t.StartsWith(partial, StringComparison.OrdinalIgnoreCase));
+            if (matched != null && !matched.Equals(partial, StringComparison.OrdinalIgnoreCase))
             {
-                return matched.Name.Substring(parts[0].Length);
+                return matched.Substring(partial.Length);
             }
         }
         else
         {
             // Subcommand / Argument completion
             var cmdName = parts[0];
-            var command = commands.FirstOrDefault(c => c.Name.Equals(cmdName, StringComparison.OrdinalIgnoreCase));
-            if (command != null)
+            if (CommandResolver.TryResolveTopLevel(commands, new[] { cmdName }, out var command, out var resolvedArgs) && command != null)
             {
                 string lastPart = parts.Last();
-                string[] argsSoFar = parts.Skip(1).Take(parts.Length - (string.IsNullOrEmpty(lastPart) ? 1 : 2)).ToArray();
+                string[] rawArgsSoFar = parts.Skip(1).Take(parts.Length - (string.IsNullOrEmpty(lastPart) ? 1 : 2)).ToArray();
+                string[] argsSoFar = resolvedArgs.Concat(rawArgsSoFar).ToArray();
                 
                 // We want completions for the "lastPart"
                 var completions = command.GetCompletions(argsSoFar).ToList();
@@ -169,6 +171,10 @@ internal static class InputPalette
             {
                 VelvetCommand item = filtered[i];
                 string displayText = $"{item.Name} - {item.Description}";
+                if (item.Aliases.Any())
+                {
+                    displayText += $" (aliases: {string.Join(", ", item.Aliases)})";
+                }
 
                 Console.SetCursorPosition(0, renderTop + 1 + i);
                 Console.BackgroundColor = i == selected ? ConsoleColor.DarkGray : ConsoleColor.Black;
@@ -177,6 +183,10 @@ internal static class InputPalette
                 Console.Write(item.Name);
                 Console.ForegroundColor = ConsoleColor.Gray;
                 Console.Write($" - {item.Description}");
+                if (item.Aliases.Any())
+                {
+                    Console.Write($" (aliases: {string.Join(", ", item.Aliases)})");
+                }
 
                 int padding = Math.Max(0, windowWidth - displayText.Length);
                 Console.Write(new string(' ', padding));
@@ -362,6 +372,7 @@ internal static class InputPalette
             if (parts.Length > 0)
             {
                 bool isValidCmd = commands.Any(c => c.Name.Equals(parts[0], StringComparison.OrdinalIgnoreCase));
+                isValidCmd = isValidCmd || CommandResolver.IsKnownTopLevelToken(commands, parts[0]);
                 if (isValidCmd)
                 {
                     Console.ForegroundColor = ConsoleColor.Green;
@@ -410,6 +421,7 @@ internal static class InputPalette
 
         return all
             .Where(cmd => cmd.Name.Contains(q, StringComparison.OrdinalIgnoreCase) ||
+                          cmd.Aliases.Any(alias => alias.Contains(q, StringComparison.OrdinalIgnoreCase)) ||
                           cmd.Description.Contains(q, StringComparison.OrdinalIgnoreCase))
             .ToList();
     }

@@ -8,6 +8,7 @@ namespace VelvetCLI.Commands;
 internal sealed class RunHytaleServerCommand : VelvetCommand
 {
     public override string Name => "server";
+    public override IEnumerable<string> Aliases => new[] { "s" };
     public override string Description => "Runs the Hytale server with the example plugin";
 
     protected override void ExecuteCore(string[] args)

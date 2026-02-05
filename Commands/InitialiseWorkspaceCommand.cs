@@ -7,6 +7,7 @@ namespace VelvetCLI.Commands
     internal class InitialiseWorkspaceCommand : VelvetCommand
     {
         public override string Name => "init";
+        public override IEnumerable<string> Aliases => new[] { "i" };
         public override string Description => "Initialise MODS workspace";
 
         protected override void ExecuteCore(string[] args)

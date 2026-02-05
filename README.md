@@ -39,6 +39,7 @@ VelvetCLI is a command-line tool designed to streamline Hytale mod development. 
 ### Workspace Commands
 
 - `init`: Initializes the current directory as a Velvet workspace by creating the `mods` folder.
+- `doctor`: Runs diagnostics for Java, Git, Gradle, Hytale paths, permissions, and workspace structure.
 
 ### Hytale Server Commands
 
@@ -57,6 +58,25 @@ VelvetCLI is a command-line tool designed to streamline Hytale mod development. 
 - `mod select`: Opens an interactive multi-selection menu to toggle which mods are active for the next server run.
 - `mod open [[mod-name]]`: Opens the specified mod (or prompts for selection) in your preferred IDE.
 - `mod ide [[command|clear]]`: Configures your preferred IDE command (e.g., `code`) or clears it to use defaults. By default it uses `antigravity` then `code` then `intelij.exe`
+- `mod rebuild [[mod-name]]`: Rebuilds one mod (or choose one interactively).
+
+### Aliases / Shorthand
+
+- Top-level aliases:
+  - `s` -> `server`
+  - `m` -> `mod`
+  - `a` -> `auth`
+  - `i` -> `init`
+  - `d` -> `doctor`
+  - `x`, `q`, `quit` -> `exit`
+- Global shorthand:
+  - `rb [[mod-name]]` -> `mod rebuild [[mod-name]]`
+- Mod subcommand aliases:
+  - `mod c` -> `mod clone`
+  - `mod o` -> `mod open`
+  - `mod sel` -> `mod select`
+  - `mod id` -> `mod ide`
+  - `mod rb` -> `mod rebuild`
 
 ### Utility Commands
 

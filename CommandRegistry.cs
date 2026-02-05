@@ -22,6 +22,7 @@ internal sealed class CommandRegistry
             new RunHytaleServerCommand(),
             new AuthenticateHytaleCommand(),
             new ModCommand(),
+            new DoctorCommand(),
             //new ShowDateTimeCommand(executor),
             //new SystemInfoCommand(executor),
             new ExitCommand()

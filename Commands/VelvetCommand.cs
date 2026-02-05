@@ -5,6 +5,7 @@ namespace VelvetCLI.Commands;
 internal abstract class VelvetCommand
 {
     public abstract string Name { get; }
+    public virtual IEnumerable<string> Aliases => Enumerable.Empty<string>();
     public virtual string Description => Name;
     public virtual bool ShouldExitAfterRun => false;
 
@@ -29,6 +30,10 @@ internal abstract class VelvetCommand
     public virtual void ShowHelp()
     {
         AnsiConsole.MarkupLine($"[bold blue]Command:[/] {Name}");
+        if (Aliases.Any())
+        {
+            AnsiConsole.MarkupLine($"[bold blue]Aliases:[/] {string.Join(", ", Aliases)}");
+        }
         AnsiConsole.MarkupLine($"[bold blue]Description:[/] {Description}");
     }
 }

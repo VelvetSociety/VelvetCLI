@@ -8,6 +8,7 @@ namespace VelvetCLI.Commands;
 internal sealed class AuthenticateHytaleCommand : VelvetCommand
 {
     public override string Name => "auth";
+    public override IEnumerable<string> Aliases => new[] { "a" };
     public override string Description => "Authenticates the Hytale server and saves credentials";
 
     protected override void ExecuteCore(string[] args)

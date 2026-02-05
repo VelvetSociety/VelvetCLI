@@ -5,6 +5,7 @@ namespace VelvetCLI.Commands;
 internal sealed class ExitCommand : VelvetCommand
 {
     public override string Name => "exit";
+    public override IEnumerable<string> Aliases => new[] { "x", "q", "quit" };
     public override string Description => "Exit the application";
     public override bool ShouldExitAfterRun => true;
 

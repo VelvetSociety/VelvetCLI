@@ -1,5 +1,4 @@
 using System;
-using System.Linq;
 using Spectre.Console;
 using VelvetCLI.Commands;
 
@@ -42,9 +41,8 @@ internal sealed class VelvetCliApp
             }
 
             string[] parts = input.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-            if (parts.Length > 0 && TryMatchCommand(parts[0], out VelvetCommand? matched))
+            if (parts.Length > 0 && CommandResolver.TryResolveTopLevel(_commandRegistry.Commands, parts, out VelvetCommand? matched, out string[] args))
             {
-                string[] args = parts.Skip(1).ToArray();
                 if (ExecuteCommand(matched, args))
                 {
                     return;
@@ -55,13 +53,6 @@ internal sealed class VelvetCliApp
                 AnsiConsole.MarkupLine("[red]Unrecognized command:[/] {0}", input);
             }
         }
-    }
-
-    private bool TryMatchCommand(string commandName, out VelvetCommand? command)
-    {
-        command = _commandRegistry.Commands
-            .FirstOrDefault(cmd => string.Equals(cmd.Name, commandName, StringComparison.OrdinalIgnoreCase));
-        return command is not null;
     }
 
     private static bool ExecuteCommand(VelvetCommand command, string[] args)

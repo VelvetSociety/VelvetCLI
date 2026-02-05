@@ -23,7 +23,14 @@ internal static class MenuView
                     Console.ForegroundColor = ConsoleColor.White;
                 }
 
-                Console.WriteLine(command.Name);
+                if (command.Aliases.Any())
+                {
+                    Console.WriteLine($"{command.Name} ({string.Join(", ", command.Aliases)})");
+                }
+                else
+                {
+                    Console.WriteLine(command.Name);
+                }
                 Console.ResetColor();
             }
 

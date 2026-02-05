@@ -9,6 +9,7 @@ namespace VelvetCLI.Commands;
 internal sealed class ModCommand : VelvetCommand
 {
     public override string Name => "mod";
+    public override IEnumerable<string> Aliases => new[] { "m" };
     public override string Description => "Manage mods (clone <url>, open [[mod-name]])";
 
     protected override void ExecuteCore(string[] args)
@@ -19,7 +20,7 @@ internal sealed class ModCommand : VelvetCommand
             return;
         }
 
-        string subCommand = args[0].ToLower();
+        string subCommand = NormalizeSubCommand(args[0]);
 
         switch (subCommand)
         {
@@ -50,22 +51,36 @@ internal sealed class ModCommand : VelvetCommand
         base.ShowHelp();
         AnsiConsole.WriteLine();
         AnsiConsole.MarkupLine("[bold yellow]Subcommands:[/]");
-        AnsiConsole.MarkupLine("  [green]clone <url>[/]      Clones a mod repository into the 'mods' folder.");
-        AnsiConsole.MarkupLine("  [green]open [[mod-name]][/] Opens a specific mod (or lists all) in your IDE.");
-        AnsiConsole.MarkupLine("  [green]select[/]            Opens a menu to toggle which mods are active.");
-        AnsiConsole.MarkupLine("  [green]ide [[command]][/]   Sets your preferred IDE command (e.g., 'code').");
+        AnsiConsole.MarkupLine("  [green]clone|c <url>[/]     Clones a mod repository into the 'mods' folder.");
+        AnsiConsole.MarkupLine("  [green]open|o [[mod-name]][/] Opens a specific mod (or lists all) in your IDE.");
+        AnsiConsole.MarkupLine("  [green]select|sel[/]         Opens a menu to toggle which mods are active.");
+        AnsiConsole.MarkupLine("  [green]ide|id [[command]][/] Sets your preferred IDE command (e.g., 'code').");
         AnsiConsole.MarkupLine("  [green]ide clear[/]         Resets IDE preferences to defaults.");
-        AnsiConsole.MarkupLine("  [green]rebuild [[mod-name]][/] Rebuilds a specific mod or shows a selection menu.");
+        AnsiConsole.MarkupLine("  [green]rebuild|rb [[mod-name]][/] Rebuilds a specific mod or shows a selection menu.");
     }
 
     private void ShowUsage()
     {
         AnsiConsole.MarkupLine("[bold blue]Usage:[/]");
-        AnsiConsole.MarkupLine("  mod clone <github-link>");
-        AnsiConsole.MarkupLine("  mod open [[mod-name]]");
-        AnsiConsole.MarkupLine("  mod select");
-        AnsiConsole.MarkupLine("  mod ide [[command|clear]]");
-        AnsiConsole.MarkupLine("  mod rebuild [[mod-name]]");
+        AnsiConsole.MarkupLine("  mod|m clone|c <github-link>");
+        AnsiConsole.MarkupLine("  mod|m open|o [[mod-name]]");
+        AnsiConsole.MarkupLine("  mod|m select|sel");
+        AnsiConsole.MarkupLine("  mod|m ide|id [[command|clear]]");
+        AnsiConsole.MarkupLine("  mod|m rebuild|rb [[mod-name]]");
+        AnsiConsole.MarkupLine("  rb [[mod-name]]  (global shorthand for 'mod rebuild')");
+    }
+
+    private static string NormalizeSubCommand(string subCommand)
+    {
+        return subCommand.ToLowerInvariant() switch
+        {
+            "c" => "clone",
+            "o" => "open",
+            "sel" => "select",
+            "id" => "ide",
+            "rb" => "rebuild",
+            _ => subCommand.ToLowerInvariant()
+        };
     }
 
     private void ExecuteClone(string[] args)
@@ -436,15 +451,15 @@ internal sealed class ModCommand : VelvetCommand
     {
         if (args.Length == 0)
         {
-            return new[] { "clone", "open", "select", "ide", "rebuild" };
+            return new[] { "clone", "c", "open", "o", "select", "sel", "ide", "id", "rebuild", "rb" };
         }
 
         if (args.Length == 1)
         {
-            string sub = args[0].ToLowerInvariant();
-            var subs = new[] { "clone", "open", "select", "ide", "rebuild" };
+            string sub = NormalizeSubCommand(args[0]);
+            var subs = new[] { "clone", "c", "open", "o", "select", "sel", "ide", "id", "rebuild", "rb" };
             
-            if (subs.Contains(sub))
+            if (sub is "clone" or "open" or "select" or "ide" or "rebuild")
             {
                 if (sub == "open" || sub == "rebuild")
                 {
@@ -460,10 +475,11 @@ internal sealed class ModCommand : VelvetCommand
                 return Enumerable.Empty<string>();
             }
 
-            return subs.Where(s => s.StartsWith(sub, StringComparison.OrdinalIgnoreCase));
+            return subs.Where(s => s.StartsWith(args[0], StringComparison.OrdinalIgnoreCase));
         }
 
-        if (args.Length == 2 && (args[0].Equals("open", StringComparison.OrdinalIgnoreCase) || args[0].Equals("rebuild", StringComparison.OrdinalIgnoreCase)))
+        string normalizedFirst = NormalizeSubCommand(args[0]);
+        if (args.Length == 2 && (normalizedFirst.Equals("open", StringComparison.OrdinalIgnoreCase) || normalizedFirst.Equals("rebuild", StringComparison.OrdinalIgnoreCase)))
         {
             const string modsFolder = "mods";
             if (Directory.Exists(modsFolder))
