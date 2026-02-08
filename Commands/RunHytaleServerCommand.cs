@@ -1,6 +1,8 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.IO.Compression;
+using System.Text.Json;
 using Spectre.Console;
 
 namespace VelvetCLI.Commands;
@@ -53,6 +55,8 @@ internal sealed class RunHytaleServerCommand : VelvetCommand
                 AnsiConsole.MarkupLine($"[red]Warning:[/] Skipping mod '[yellow]{modName}[/]' because it could not be built.");
             }
         }
+
+        ValidateDependencies(modDirs);
 
         string hytaleModsArg = string.Join(",", modDirs.Distinct());
         string workingDir = "server";
@@ -140,6 +144,60 @@ internal sealed class RunHytaleServerCommand : VelvetCommand
         return null;
     }
     
+    private void ValidateDependencies(List<string> modDirs)
+    {
+        var available = new HashSet<string>();
+        var modDependencies = new List<(string ModId, Dictionary<string, string> Dependencies)>();
+
+        foreach (string dir in modDirs.Distinct())
+        {
+            foreach (string jarPath in Directory.GetFiles(dir, "*.jar"))
+            {
+                try
+                {
+                    using var zip = ZipFile.OpenRead(jarPath);
+                    var manifestEntry = zip.GetEntry("manifest.json");
+                    if (manifestEntry == null) continue;
+
+                    using var stream = manifestEntry.Open();
+                    using var doc = JsonDocument.Parse(stream);
+                    var root = doc.RootElement;
+
+                    string group = root.GetProperty("Group").GetString() ?? "";
+                    string name = root.GetProperty("Name").GetString() ?? "";
+                    string modId = $"{group}:{name}";
+                    available.Add(modId);
+
+                    var deps = new Dictionary<string, string>();
+                    if (root.TryGetProperty("Dependencies", out var depsElement) && depsElement.ValueKind == JsonValueKind.Object)
+                    {
+                        foreach (var dep in depsElement.EnumerateObject())
+                        {
+                            deps[dep.Name] = dep.Value.GetString() ?? "*";
+                        }
+                    }
+
+                    modDependencies.Add((modId, deps));
+                }
+                catch
+                {
+                    // Skip JARs that can't be read or don't have a valid manifest
+                }
+            }
+        }
+
+        foreach (var (modId, deps) in modDependencies)
+        {
+            foreach (var (depId, depVersion) in deps)
+            {
+                if (!available.Contains(depId))
+                {
+                    AnsiConsole.MarkupLine($"[yellow]Warning:[/] '[white]{modId}[/]' requires '[white]{depId}[/]' ({depVersion}) which is not among the loaded mods.");
+                }
+            }
+        }
+    }
+
     public override IEnumerable<string> GetCompletions(string[] args)
     {
         if (args.Length == 0)
