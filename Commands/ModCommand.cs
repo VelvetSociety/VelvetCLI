@@ -167,6 +167,8 @@ internal sealed class ModCommand : VelvetCommand
         {
             var mods = Directory.GetDirectories(modsFolder)
                 .Select(Path.GetFileName)
+                .Where(name => name != null && !name.Equals("dependencies", StringComparison.OrdinalIgnoreCase))
+                .Cast<string>()
                 .ToList();
 
             if (mods.Count == 0)
@@ -349,11 +351,25 @@ internal sealed class ModCommand : VelvetCommand
 
         var availableMods = Directory.GetDirectories(modsFolder)
             .Select(Path.GetFileName)
-            .Where(name => name != null)
+            .Where(name => name != null && !name.Equals("dependencies", StringComparison.OrdinalIgnoreCase))
             .Cast<string>()
             .ToList();
 
-        if (availableMods.Count == 0)
+        string depsFolder = Path.Combine(modsFolder, "dependencies");
+        var depJars = new List<string>();
+        if (Directory.Exists(depsFolder))
+        {
+            depJars = Directory.GetFiles(depsFolder, "*.jar")
+                .Select(Path.GetFileName)
+                .Where(name => name != null)
+                .Cast<string>()
+                .Select(name => $"dep:{name}")
+                .ToList();
+        }
+
+        var allChoices = availableMods.Concat(depJars).ToList();
+
+        if (allChoices.Count == 0)
         {
             AnsiConsole.MarkupLine("[yellow]No mods found in the 'mods' folder.[/]");
             return;
@@ -373,12 +389,14 @@ internal sealed class ModCommand : VelvetCommand
         var prompt = new MultiSelectionPrompt<string>()
             .Title("Select [green]mods[/] to run with the server:")
             .InstructionsText("[grey](Press [blue]<space>[/] to toggle a mod, [green]<enter>[/] to accept)[/]")
+            .Required(false)
             .PageSize(10)
-            .AddChoices(availableMods);
+            .UseConverter(item => item.StartsWith("dep:") ? $"[[JAR]] {item.Substring(4)}" : item)
+            .AddChoices(allChoices);
 
         foreach (var mod in selectedIndices)
         {
-            if (availableMods.Contains(mod))
+            if (allChoices.Contains(mod))
             {
                 prompt.Select(mod);
             }
@@ -424,6 +442,8 @@ internal sealed class ModCommand : VelvetCommand
         {
             var mods = Directory.GetDirectories(modsFolder)
                 .Select(Path.GetFileName)
+                .Where(name => name != null && !name.Equals("dependencies", StringComparison.OrdinalIgnoreCase))
+                .Cast<string>()
                 .ToList();
 
             if (mods.Count == 0)
@@ -468,7 +488,7 @@ internal sealed class ModCommand : VelvetCommand
                     {
                         return Directory.GetDirectories(modsFolder)
                             .Select(Path.GetFileName)
-                            .Where(n => n != null)
+                            .Where(n => n != null && !n.Equals("dependencies", StringComparison.OrdinalIgnoreCase))
                             .Cast<string>();
                     }
                 }
@@ -487,7 +507,7 @@ internal sealed class ModCommand : VelvetCommand
                 string query = args[1].ToLowerInvariant();
                 return Directory.GetDirectories(modsFolder)
                     .Select(Path.GetFileName)
-                    .Where(n => n != null)
+                    .Where(n => n != null && !n.Equals("dependencies", StringComparison.OrdinalIgnoreCase))
                     .Cast<string>()
                     .Where(n => n.StartsWith(query, StringComparison.OrdinalIgnoreCase));
             }

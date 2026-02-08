@@ -134,8 +134,23 @@ internal sealed class DoctorCommand : VelvetCommand
             return results;
         }
 
-        var modDirectories = Directory.GetDirectories(modsFolder).Select(Path.GetFileName).Where(x => x != null).Cast<string>().ToList();
+        var modDirectories = Directory.GetDirectories(modsFolder)
+            .Select(Path.GetFileName)
+            .Where(x => x != null && !x.Equals("dependencies", StringComparison.OrdinalIgnoreCase))
+            .Cast<string>()
+            .ToList();
         results.Add(DoctorResult.Pass("Workspace", $"'mods' found with {modDirectories.Count} mod folder(s)."));
+
+        string depsFolder = Path.Combine(modsFolder, "dependencies");
+        if (Directory.Exists(depsFolder))
+        {
+            int jarCount = Directory.GetFiles(depsFolder, "*.jar").Length;
+            results.Add(DoctorResult.Pass("Dependencies", $"'mods/dependencies' found with {jarCount} JAR file(s)."));
+        }
+        else
+        {
+            results.Add(DoctorResult.Warn("Dependencies", "'mods/dependencies' folder not found. Use 'init' to create it."));
+        }
 
         if (!File.Exists(selectionFile))
         {
@@ -148,7 +163,16 @@ internal sealed class DoctorCommand : VelvetCommand
             string json = File.ReadAllText(selectionFile);
             var selected = System.Text.Json.JsonSerializer.Deserialize<List<string>>(json) ?? new List<string>();
 
-            var missing = selected.Where(mod => !Directory.Exists(Path.Combine(modsFolder, mod))).ToList();
+            var missing = selected.Where(mod =>
+            {
+                if (mod.StartsWith("dep:"))
+                {
+                    string jarName = mod.Substring(4);
+                    return !File.Exists(Path.Combine(modsFolder, "dependencies", jarName));
+                }
+                return !Directory.Exists(Path.Combine(modsFolder, mod));
+            }).ToList();
+
             if (missing.Count == 0)
             {
                 results.Add(DoctorResult.Pass("Selected Mods", $"{selected.Count} selected mod(s), all present."));

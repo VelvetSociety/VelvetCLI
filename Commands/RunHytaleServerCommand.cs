@@ -38,8 +38,11 @@ internal sealed class RunHytaleServerCommand : VelvetCommand
             catch { /* Ignore corrupt file */ }
         }
 
+        var buildableMods = selectedMods.Where(m => !m.StartsWith("dep:")).ToList();
+        var selectedDeps = selectedMods.Where(m => m.StartsWith("dep:")).Select(m => m.Substring(4)).ToList();
+
         var modDirs = new List<string>();
-        foreach (var modName in selectedMods)
+        foreach (var modName in buildableMods)
         {
             string? jarPath = EnsureModBuilt(modName, forceRebuild);
             if (jarPath != null)
@@ -53,6 +56,40 @@ internal sealed class RunHytaleServerCommand : VelvetCommand
             else
             {
                 AnsiConsole.MarkupLine($"[red]Warning:[/] Skipping mod '[yellow]{modName}[/]' because it could not be built.");
+            }
+        }
+
+        if (selectedDeps.Count > 0)
+        {
+            string depsFolder = Path.Combine("mods", "dependencies");
+            string stagingDir = Path.Combine(depsFolder, ".staging");
+
+            if (Directory.Exists(stagingDir))
+            {
+                foreach (var file in Directory.GetFiles(stagingDir, "*.jar"))
+                    File.Delete(file);
+            }
+            else
+            {
+                Directory.CreateDirectory(stagingDir);
+            }
+
+            foreach (var jarName in selectedDeps)
+            {
+                string srcPath = Path.Combine(depsFolder, jarName);
+                if (File.Exists(srcPath))
+                {
+                    File.Copy(srcPath, Path.Combine(stagingDir, jarName), true);
+                }
+                else
+                {
+                    AnsiConsole.MarkupLine($"[yellow]Warning:[/] Dependency JAR '[white]{jarName}[/]' not found in mods/dependencies/.");
+                }
+            }
+
+            if (Directory.GetFiles(stagingDir, "*.jar").Length > 0)
+            {
+                modDirs.Add(Path.GetFullPath(stagingDir));
             }
         }
 

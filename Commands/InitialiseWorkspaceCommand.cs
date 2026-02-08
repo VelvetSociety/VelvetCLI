@@ -25,6 +25,13 @@ namespace VelvetCLI.Commands
                     Directory.CreateDirectory(modsFolder);
                     Console.WriteLine($"Created '{modsFolder}' directory.");
                 }
+
+                string depsFolder = Path.Combine(modsFolder, "dependencies");
+                if (!Directory.Exists(depsFolder))
+                {
+                    Directory.CreateDirectory(depsFolder);
+                    Console.WriteLine($"Created '{depsFolder}' directory.");
+                }
             }
             catch (Exception ex)
             {
